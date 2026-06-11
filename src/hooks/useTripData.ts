@@ -69,6 +69,13 @@ export function useTripData(tripId: string): TripData {
         { event: '*', schema: 'public', table: 'expenses', filter: `trip_id=eq.${tripId}` },
         () => void reloadExpenses(),
       )
+      // DELETE 事件的舊資料列只帶主鍵,trip_id 過濾條件比對不到,上面的訂閱收不到刪除;
+      // 改用不過濾的 DELETE 訂閱補洞(別的行程刪帳只是多一次重抓,查詢仍以 trip_id 過濾)
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'expenses' },
+        () => void reloadExpenses(),
+      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'members', filter: `trip_id=eq.${tripId}` },
@@ -76,8 +83,18 @@ export function useTripData(tripId: string): TripData {
       )
       .subscribe()
 
+    // 手機鎖屏/切到背景時 WebSocket 可能斷線,回前景時主動重抓一次
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void reloadExpenses()
+        void reloadMembers()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
       void supabase.removeChannel(channel)
     }
   }, [tripId, reloadMembers, reloadExpenses])

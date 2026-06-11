@@ -10,6 +10,8 @@ export interface TripContext {
   members: Member[]
   expenses: ExpenseDetail[]
   myMemberId: string
+  /** 寫入後主動重抓,不等 Realtime(自己的操作要立刻看到) */
+  reloadExpenses: () => Promise<void>
 }
 
 export function useTripContext(): TripContext {
@@ -24,7 +26,7 @@ const TABS = [
 
 export default function TripLayout() {
   const { id = '' } = useParams()
-  const { trip, members, expenses, loading, error } = useTripData(id)
+  const { trip, members, expenses, loading, error, reloadExpenses } = useTripData(id)
   const [identity, setIdentity] = useState(() => getIdentity(id))
 
   if (loading) {
@@ -51,7 +53,13 @@ export default function TripLayout() {
     return <JoinPrompt trip={trip} onJoined={setIdentity} />
   }
 
-  const context: TripContext = { trip, members, expenses, myMemberId: identity.memberId }
+  const context: TripContext = {
+    trip,
+    members,
+    expenses,
+    myMemberId: identity.memberId,
+    reloadExpenses,
+  }
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-teal-50">

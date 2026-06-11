@@ -5,7 +5,7 @@ import { createSettlement } from '../lib/api'
 import { formatMoney } from '../lib/money'
 
 export default function SettlePage() {
-  const { trip, members, expenses, myMemberId } = useTripContext()
+  const { trip, members, expenses, myMemberId, reloadExpenses } = useTripContext()
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,7 +34,7 @@ export default function SettlePage() {
         amountCents,
         title: `${from} 還給 ${to}`,
       })
-      // Realtime 訂閱會自動更新 expenses → 淨額與轉帳方案跟著重算
+      await reloadExpenses() // 立刻重算,其他裝置由 Realtime 更新
     } catch (err) {
       setError(err instanceof Error ? err.message : '標記還款失敗,請再試一次')
     } finally {

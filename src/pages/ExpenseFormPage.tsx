@@ -20,7 +20,7 @@ function centsToInput(cents: number): string {
 }
 
 export default function ExpenseFormPage() {
-  const { trip, members, expenses, myMemberId } = useTripContext()
+  const { trip, members, expenses, myMemberId, reloadExpenses } = useTripContext()
   const { expenseId } = useParams()
   const navigate = useNavigate()
 
@@ -160,6 +160,7 @@ export default function ExpenseFormPage() {
       } else {
         await createExpense({ ...payload, trip_id: trip.id, kind: 'expense' }, payerRows, splits)
       }
+      await reloadExpenses()
       navigate(`/trip/${trip.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : '儲存失敗,請再試一次')
@@ -172,6 +173,7 @@ export default function ExpenseFormPage() {
     setBusy(true)
     try {
       await deleteExpense(expenseId!)
+      await reloadExpenses()
       navigate(`/trip/${trip.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : '刪除失敗,請再試一次')
