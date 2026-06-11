@@ -1,5 +1,22 @@
 import { describe, it, expect } from 'vitest'
-import { parseAmountToCents, formatCents, splitEvenly } from './money'
+import { parseAmountToCents, parseCentsAllowZero, formatCents, splitEvenly } from './money'
+
+describe('parseCentsAllowZero', () => {
+  it('空字串視為 0', () => {
+    expect(parseCentsAllowZero('')).toBe(0)
+    expect(parseCentsAllowZero('  ')).toBe(0)
+  })
+  it('0 是合法值', () => {
+    expect(parseCentsAllowZero('0')).toBe(0)
+  })
+  it('正常金額照樣轉分', () => {
+    expect(parseCentsAllowZero('99.95')).toBe(9995)
+  })
+  it('不合法輸入回傳 null', () => {
+    expect(parseCentsAllowZero('abc')).toBeNull()
+    expect(parseCentsAllowZero('-5')).toBeNull()
+  })
+})
 
 describe('parseAmountToCents', () => {
   it('整數元轉成分', () => {

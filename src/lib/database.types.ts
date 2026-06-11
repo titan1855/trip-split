@@ -29,7 +29,8 @@ export type Expense = {
   currency: string
   /** 對主幣別匯率(每筆快照) */
   fx_rate: number
-  payer_id: string
+  /** 已退役:付款人改存 expense_payers,僅為相容保留 */
+  payer_id: string | null
   category: string
   spent_at: string
   note: string | null
@@ -43,6 +44,14 @@ export type ExpenseSplit = {
   member_id: string
   /** 此成員應分攤金額(分) */
   share_cents: number
+}
+
+export type ExpensePayer = {
+  id: string
+  expense_id: string
+  member_id: string
+  /** 此成員付款金額(分) */
+  paid_cents: number
 }
 
 export type TripFxRate = {
@@ -69,8 +78,10 @@ export type Database = {
       }
       expenses: {
         Row: Expense
-        Insert: Omit<Expense, 'id' | 'created_at' | 'updated_at'> &
-          Partial<Pick<Expense, 'id' | 'kind' | 'currency' | 'fx_rate' | 'category' | 'spent_at' | 'note'>>
+        Insert: Omit<Expense, 'id' | 'created_at' | 'updated_at' | 'payer_id'> &
+          Partial<
+            Pick<Expense, 'id' | 'kind' | 'currency' | 'fx_rate' | 'category' | 'spent_at' | 'note' | 'payer_id'>
+          >
         Update: Partial<Omit<Expense, 'id'>>
         Relationships: []
       }
@@ -78,6 +89,12 @@ export type Database = {
         Row: ExpenseSplit
         Insert: Omit<ExpenseSplit, 'id'> & Partial<Pick<ExpenseSplit, 'id'>>
         Update: Partial<Omit<ExpenseSplit, 'id'>>
+        Relationships: []
+      }
+      expense_payers: {
+        Row: ExpensePayer
+        Insert: Omit<ExpensePayer, 'id'> & Partial<Pick<ExpensePayer, 'id'>>
+        Update: Partial<Omit<ExpensePayer, 'id'>>
         Relationships: []
       }
       trip_fx_rates: {

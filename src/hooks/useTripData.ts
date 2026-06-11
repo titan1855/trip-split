@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchExpenses, fetchMembers, fetchTrip, type ExpenseWithSplits } from '../lib/api'
+import { fetchExpenses, fetchMembers, fetchTrip, type ExpenseDetail } from '../lib/api'
 import { updateIdentityTripName } from '../lib/storage'
 import type { Member, Trip } from '../lib/database.types'
 
 export interface TripData {
   trip: Trip | null
   members: Member[]
-  expenses: ExpenseWithSplits[]
+  expenses: ExpenseDetail[]
   loading: boolean
   error: string | null
   reloadMembers: () => Promise<void>
@@ -16,13 +16,13 @@ export interface TripData {
 
 /**
  * 載入行程資料並訂閱 Realtime。
- * expense_splits 沒有 trip_id 欄位無法按行程過濾訂閱,但本 app 對 splits 的每次寫入
- * 都伴隨一筆 expenses 寫入(新增/更新/刪除),訂閱 expenses 事件即可涵蓋。
+ * expense_splits / expense_payers 沒有 trip_id 欄位無法按行程過濾訂閱,但本 app 對它們的
+ * 每次寫入都伴隨一筆 expenses 寫入(新增/更新/刪除),訂閱 expenses 事件即可涵蓋。
  */
 export function useTripData(tripId: string): TripData {
   const [trip, setTrip] = useState<Trip | null>(null)
   const [members, setMembers] = useState<Member[]>([])
-  const [expenses, setExpenses] = useState<ExpenseWithSplits[]>([])
+  const [expenses, setExpenses] = useState<ExpenseDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

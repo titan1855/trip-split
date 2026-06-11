@@ -3,7 +3,7 @@ import { useTripContext } from './TripLayout'
 import { formatDateLabel } from '../lib/date'
 import { formatMoney } from '../lib/money'
 import { CATEGORIES } from '../lib/constants'
-import type { ExpenseWithSplits } from '../lib/api'
+import type { ExpenseDetail } from '../lib/api'
 
 function categoryEmoji(category: string): string {
   return CATEGORIES.find((c) => c.value === category)?.emoji ?? '📦'
@@ -14,8 +14,19 @@ export default function ExpensesPage() {
 
   const memberName = (id: string) => members.find((m) => m.id === id)?.nickname ?? '?'
 
+  // 付款人顯示:單人直接給名字,多人顯示「某某 等 n 人」
+  function payersLabel(expense: ExpenseDetail): string {
+    const payers = expense.expense_payers
+    if (payers.length === 0) {
+      // 遷移前的舊資料還沒有 expense_payers 列時退回 payer_id
+      return expense.payer_id ? memberName(expense.payer_id) : '?'
+    }
+    const first = memberName(payers[0].member_id)
+    return payers.length === 1 ? first : `${first} 等 ${payers.length} 人`
+  }
+
   // 依日期分組(fetch 已按 spent_at 新到舊排序)
-  const groups: { date: string; items: ExpenseWithSplits[] }[] = []
+  const groups: { date: string; items: ExpenseDetail[] }[] = []
   for (const expense of expenses) {
     const last = groups[groups.length - 1]
     if (last && last.date === expense.spent_at) {
@@ -56,7 +67,7 @@ export default function ExpensesPage() {
                         {expense.title}
                       </span>
                       <span className="block text-xs text-stone-500">
-                        {memberName(expense.payer_id)} 付的 · {expense.expense_splits.length} 人分
+                        {payersLabel(expense)} 付的 · {expense.expense_splits.length} 人分
                       </span>
                     </span>
                     <span className="font-semibold tabular-nums text-stone-900">

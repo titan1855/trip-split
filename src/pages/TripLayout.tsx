@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom'
 import { useTripData } from '../hooks/useTripData'
-import { addMember, type ExpenseWithSplits } from '../lib/api'
+import { addMember, type ExpenseDetail } from '../lib/api'
 import { getIdentity, saveIdentity } from '../lib/storage'
 import type { Member, Trip } from '../lib/database.types'
 
 export interface TripContext {
   trip: Trip
   members: Member[]
-  expenses: ExpenseWithSplits[]
+  expenses: ExpenseDetail[]
   myMemberId: string
 }
 

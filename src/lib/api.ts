@@ -1,8 +1,11 @@
 import { supabase } from './supabase'
 import { generateInviteCode } from './inviteCode'
-import type { Expense, ExpenseSplit, Member, Trip } from './database.types'
+import type { Expense, ExpensePayer, ExpenseSplit, Member, Trip } from './database.types'
 
-export type ExpenseWithSplits = Expense & { expense_splits: ExpenseSplit[] }
+export type ExpenseDetail = Expense & {
+  expense_splits: ExpenseSplit[]
+  expense_payers: ExpensePayer[]
+}
 
 /** 統一把 Supabase 錯誤轉成使用者看得懂的中文訊息 */
 function fail(message: string, error: unknown): never {
@@ -98,7 +101,6 @@ export interface ExpenseInput {
   amount_cents: number
   currency: string
   fx_rate: number
-  payer_id: string
   category: string
   spent_at: string
   note: string | null
@@ -109,35 +111,50 @@ export interface SplitInput {
   share_cents: number
 }
 
-export async function fetchExpenses(tripId: string): Promise<ExpenseWithSplits[]> {
+export interface PayerInput {
+  member_id: string
+  paid_cents: number
+}
+
+export async function fetchExpenses(tripId: string): Promise<ExpenseDetail[]> {
   const { data, error } = await supabase
     .from('expenses')
-    .select('*, expense_splits(*)')
+    .select('*, expense_splits(*), expense_payers(*)')
     .eq('trip_id', tripId)
     .order('spent_at', { ascending: false })
     .order('created_at', { ascending: false })
-    .returns<ExpenseWithSplits[]>()
+    .returns<ExpenseDetail[]>()
   if (error) fail('讀取支出失敗,請檢查網路後再試一次', error)
   return data
 }
 
-export async function createExpense(input: ExpenseInput, splits: SplitInput[]): Promise<void> {
+export async function createExpense(
+  input: ExpenseInput,
+  payers: PayerInput[],
+  splits: SplitInput[],
+): Promise<void> {
   const { data: expense, error } = await supabase.from('expenses').insert(input).select().single()
   if (error) fail('記帳失敗,請檢查網路後再試一次', error)
 
-  const { error: splitError } = await supabase
-    .from('expense_splits')
-    .insert(splits.map((s) => ({ ...s, expense_id: expense.id })))
-  if (splitError) {
-    // 分攤寫入失敗時把孤兒支出清掉,避免出現沒有分攤的帳
+  const { error: payerError } = await supabase
+    .from('expense_payers')
+    .insert(payers.map((p) => ({ ...p, expense_id: expense.id })))
+  const { error: splitError } = payerError
+    ? { error: null }
+    : await supabase
+        .from('expense_splits')
+        .insert(splits.map((s) => ({ ...s, expense_id: expense.id })))
+  if (payerError || splitError) {
+    // 明細寫入失敗時把孤兒支出清掉(cascade 帶走已寫入的明細)
     await supabase.from('expenses').delete().eq('id', expense.id)
-    fail('記帳失敗(分攤寫入錯誤),請再試一次', splitError)
+    fail('記帳失敗(明細寫入錯誤),請再試一次', payerError ?? splitError)
   }
 }
 
 export async function updateExpense(
   expenseId: string,
   input: Omit<ExpenseInput, 'trip_id' | 'kind'>,
+  payers: PayerInput[],
   splits: SplitInput[],
 ): Promise<void> {
   const { error } = await supabase
@@ -146,16 +163,20 @@ export async function updateExpense(
     .eq('id', expenseId)
   if (error) fail('更新支出失敗,請檢查網路後再試一次', error)
 
-  const { error: delError } = await supabase
-    .from('expense_splits')
-    .delete()
-    .eq('expense_id', expenseId)
-  if (delError) fail('更新分攤失敗,請再試一次', delError)
+  for (const table of ['expense_payers', 'expense_splits'] as const) {
+    const { error: delError } = await supabase.from(table).delete().eq('expense_id', expenseId)
+    if (delError) fail('更新明細失敗,請再試一次', delError)
+  }
 
-  const { error: insError } = await supabase
+  const { error: payerError } = await supabase
+    .from('expense_payers')
+    .insert(payers.map((p) => ({ ...p, expense_id: expenseId })))
+  if (payerError) fail('更新付款明細失敗,請再試一次', payerError)
+
+  const { error: splitError } = await supabase
     .from('expense_splits')
     .insert(splits.map((s) => ({ ...s, expense_id: expenseId })))
-  if (insError) fail('更新分攤失敗,請再試一次', insError)
+  if (splitError) fail('更新分攤明細失敗,請再試一次', splitError)
 }
 
 export async function deleteExpense(expenseId: string): Promise<void> {

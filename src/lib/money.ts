@@ -10,6 +10,16 @@ export function parseAmountToCents(input: string): number | null {
   return cents
 }
 
+/** 同 parseAmountToCents,但空字串與 0 視為合法的 0(自訂分攤「沒填就是 0」用) */
+export function parseCentsAllowZero(input: string): number | null {
+  const t = input.trim()
+  if (t === '') return 0
+  if (!/^\d+(\.\d{1,2})?$/.test(t)) return null
+  const [intPart, fracPart = ''] = t.split('.')
+  const cents = Number(intPart) * 100 + Number((fracPart + '00').slice(0, 2))
+  return Number.isSafeInteger(cents) ? cents : null
+}
+
 /** 分 → 元字串(千分位,小數最多兩位、去尾零) */
 export function formatCents(cents: number): string {
   const sign = cents < 0 ? '-' : ''

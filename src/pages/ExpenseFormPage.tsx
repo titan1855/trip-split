@@ -1,12 +1,23 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTripContext } from './TripLayout'
-import { createExpense, deleteExpense, updateExpense, type SplitInput } from '../lib/api'
-import { formatCents, parseAmountToCents, splitEvenly } from '../lib/money'
+import {
+  createExpense,
+  deleteExpense,
+  updateExpense,
+  type PayerInput,
+  type SplitInput,
+} from '../lib/api'
+import { formatCents, parseAmountToCents, parseCentsAllowZero, splitEvenly } from '../lib/money'
 import { todayStr } from '../lib/date'
 import { CATEGORIES } from '../lib/constants'
 
 type SplitMode = 'even' | 'custom'
+
+/** 分 → 不帶千分位的輸入框字串 */
+function centsToInput(cents: number): string {
+  return formatCents(cents).replace(/,/g, '')
+}
 
 export default function ExpenseFormPage() {
   const { trip, members, expenses, myMemberId } = useTripContext()
@@ -17,28 +28,39 @@ export default function ExpenseFormPage() {
   const isEdit = Boolean(expenseId)
 
   const [title, setTitle] = useState(editing?.title ?? '')
-  const [amount, setAmount] = useState(editing ? formatCents(editing.amount_cents).replace(/,/g, '') : '')
-  const [payerId, setPayerId] = useState(editing?.payer_id ?? myMemberId)
+  const [amount, setAmount] = useState(editing ? centsToInput(editing.amount_cents) : '')
   const [category, setCategory] = useState(editing?.category ?? '餐飲')
   const [spentAt, setSpentAt] = useState(editing?.spent_at ?? todayStr())
   const [note, setNote] = useState(editing?.note ?? '')
+
+  // 付款人(可多人,各自輸入金額)
+  const [payers, setPayers] = useState<string[]>(() => {
+    if (!editing) return [myMemberId]
+    if (editing.expense_payers.length > 0) return editing.expense_payers.map((p) => p.member_id)
+    return editing.payer_id ? [editing.payer_id] : [myMemberId]
+  })
+  const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    for (const p of editing?.expense_payers ?? []) map[p.member_id] = centsToInput(p.paid_cents)
+    return map
+  })
+
+  // 分攤對象與方式
   const [participants, setParticipants] = useState<string[]>(
     editing ? editing.expense_splits.map((s) => s.member_id) : members.map((m) => m.id),
   )
-  const initialCustom = useMemo(() => {
-    const map: Record<string, string> = {}
-    if (editing) {
-      for (const s of editing.expense_splits) map[s.member_id] = formatCents(s.share_cents).replace(/,/g, '')
-    }
-    return map
-  }, [editing])
   const [splitMode, setSplitMode] = useState<SplitMode>(() => {
     if (!editing) return 'even'
     const even = splitEvenly(editing.amount_cents, editing.expense_splits.length)
     const actual = [...editing.expense_splits.map((s) => s.share_cents)].sort((a, b) => b - a)
     return JSON.stringify(even) === JSON.stringify(actual) ? 'even' : 'custom'
   })
-  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>(initialCustom)
+  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    for (const s of editing?.expense_splits ?? []) map[s.member_id] = centsToInput(s.share_cents)
+    return map
+  })
+
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -53,17 +75,39 @@ export default function ExpenseFormPage() {
 
   const totalCents = parseAmountToCents(amount)
 
-  const customTotal = participants.reduce((sum, id) => {
-    const cents = parseAmountToCents(customAmounts[id] ?? '')
-    return cents === null ? NaN : sum + cents
-  }, 0)
-  const customDiff =
-    totalCents !== null && !Number.isNaN(customTotal) ? totalCents - customTotal : null
+  // 即時計算「尚未分配」:沒填的視為 0
+  function remainingOf(ids: string[], amounts: Record<string, string>): number | null {
+    if (totalCents === null) return null
+    let sum = 0
+    for (const id of ids) {
+      const cents = parseCentsAllowZero(amounts[id] ?? '')
+      if (cents === null) return null
+      sum += cents
+    }
+    return totalCents - sum
+  }
+  const payerRemaining = payers.length > 1 ? remainingOf(payers, payerAmounts) : null
+  const splitRemaining = splitMode === 'custom' ? remainingOf(participants, customAmounts) : null
 
-  function toggleParticipant(id: string) {
-    setParticipants((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
-    )
+  function toggle(list: string[], setList: (v: string[]) => void, id: string) {
+    setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id])
+  }
+
+  function buildPayers(): PayerInput[] | string {
+    if (totalCents === null) return '請輸入正確的金額'
+    if (payers.length === 0) return '至少要選一個付款人'
+    if (payers.length === 1) return [{ member_id: payers[0], paid_cents: totalCents }]
+    const rows: PayerInput[] = []
+    for (const id of payers) {
+      const cents = parseCentsAllowZero(payerAmounts[id] ?? '')
+      if (cents === null) return '付款金額格式不對,請檢查一下'
+      if (cents > 0) rows.push({ member_id: id, paid_cents: cents })
+    }
+    const sum = rows.reduce((a, p) => a + p.paid_cents, 0)
+    if (sum !== totalCents) {
+      return `付款加總(${formatCents(sum)})跟總金額(${formatCents(totalCents)})對不起來`
+    }
+    return rows
   }
 
   function buildSplits(): SplitInput[] | string {
@@ -73,21 +117,27 @@ export default function ExpenseFormPage() {
       const shares = splitEvenly(totalCents, participants.length)
       return participants.map((member_id, i) => ({ member_id, share_cents: shares[i] }))
     }
-    const splits: SplitInput[] = []
+    const rows: SplitInput[] = []
     for (const id of participants) {
-      const cents = parseAmountToCents(customAmounts[id] ?? '')
-      if (cents === null) return '每個人的分攤金額都要填'
-      splits.push({ member_id: id, share_cents: cents })
+      const cents = parseCentsAllowZero(customAmounts[id] ?? '')
+      if (cents === null) return '分攤金額格式不對,請檢查一下'
+      if (cents > 0) rows.push({ member_id: id, share_cents: cents })
     }
-    const sum = splits.reduce((a, s) => a + s.share_cents, 0)
+    if (rows.length === 0) return '至少要有一個人分攤金額大於 0'
+    const sum = rows.reduce((a, s) => a + s.share_cents, 0)
     if (sum !== totalCents) {
-      return `分攤加總(${formatCents(sum)})跟總金額(${formatCents(totalCents)})對不起來`
+      return `還有 ${formatCents(totalCents - sum)} 沒分配完,加總要等於總金額`
     }
-    return splits
+    return rows
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    const payerRows = buildPayers()
+    if (typeof payerRows === 'string') {
+      setError(payerRows)
+      return
+    }
     const splits = buildSplits()
     if (typeof splits === 'string') {
       setError(splits)
@@ -100,16 +150,15 @@ export default function ExpenseFormPage() {
       amount_cents: totalCents!,
       currency: trip.base_currency, // 多幣別在 Phase 5 開放
       fx_rate: 1,
-      payer_id: payerId,
       category,
       spent_at: spentAt,
       note: note.trim() || null,
     }
     try {
       if (isEdit) {
-        await updateExpense(expenseId!, payload, splits)
+        await updateExpense(expenseId!, payload, payerRows, splits)
       } else {
-        await createExpense({ ...payload, trip_id: trip.id, kind: 'expense' }, splits)
+        await createExpense({ ...payload, trip_id: trip.id, kind: 'expense' }, payerRows, splits)
       }
       navigate(`/trip/${trip.id}`)
     } catch (err) {
@@ -133,6 +182,24 @@ export default function ExpenseFormPage() {
   const inputCls =
     'w-full min-h-11 rounded-xl border border-teal-200 bg-white px-4 text-base focus:border-teal-500 focus:outline-none'
   const labelCls = 'mb-1 block text-sm font-medium text-teal-900'
+  const chipCls = (active: boolean) =>
+    `min-h-11 rounded-full px-4 text-sm ${
+      active ? 'bg-teal-600 font-semibold text-white' : 'bg-white text-stone-600 shadow-sm'
+    }`
+
+  function RemainingLine({ remaining }: { remaining: number | null }) {
+    if (remaining === null) return null
+    if (remaining === 0) {
+      return <p className="mt-2 text-sm font-medium text-teal-600">✓ 分配完成</p>
+    }
+    return (
+      <p className="mt-2 text-sm font-medium text-orange-600">
+        {remaining > 0
+          ? `尚未分配:${formatCents(remaining)} ${trip.base_currency}`
+          : `超出總金額:${formatCents(-remaining)} ${trip.base_currency}`}
+      </p>
+    )
+  }
 
   return (
     <main className="px-4 pb-8 pt-4">
@@ -177,11 +244,7 @@ export default function ExpenseFormPage() {
                 key={c.value}
                 type="button"
                 onClick={() => setCategory(c.value)}
-                className={`min-h-11 rounded-full px-4 text-sm ${
-                  category === c.value
-                    ? 'bg-teal-600 font-semibold text-white'
-                    : 'bg-white text-stone-600 shadow-sm'
-                }`}
+                className={chipCls(category === c.value)}
               >
                 {c.emoji} {c.value}
               </button>
@@ -190,22 +253,46 @@ export default function ExpenseFormPage() {
         </div>
 
         <div>
-          <label htmlFor="exp-payer" className={labelCls}>
-            誰付的
-          </label>
-          <select
-            id="exp-payer"
-            className={inputCls}
-            value={payerId}
-            onChange={(e) => setPayerId(e.target.value)}
-          >
+          <span className={labelCls}>誰付的(可多人)</span>
+          <div className="flex flex-wrap gap-2">
             {members.map((m) => (
-              <option key={m.id} value={m.id}>
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => toggle(payers, setPayers, m.id)}
+                className={chipCls(payers.includes(m.id))}
+              >
                 {m.nickname}
                 {m.id === myMemberId ? '(我)' : ''}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
+
+          {payers.length > 1 && (
+            <div className="mt-2 space-y-2">
+              {payers.map((id) => {
+                const member = members.find((m) => m.id === id)
+                return (
+                  <div key={id} className="flex items-center gap-3">
+                    <span className="w-20 flex-none truncate text-sm text-stone-700">
+                      {member?.nickname}
+                    </span>
+                    <input
+                      className={`${inputCls} tabular-nums`}
+                      value={payerAmounts[id] ?? ''}
+                      onChange={(e) =>
+                        setPayerAmounts((prev) => ({ ...prev, [id]: e.target.value }))
+                      }
+                      placeholder="0"
+                      inputMode="decimal"
+                      aria-label={`${member?.nickname} 付款金額`}
+                    />
+                  </div>
+                )
+              })}
+              <RemainingLine remaining={payerRemaining} />
+            </div>
+          )}
         </div>
 
         <div>
@@ -215,12 +302,8 @@ export default function ExpenseFormPage() {
               <button
                 key={m.id}
                 type="button"
-                onClick={() => toggleParticipant(m.id)}
-                className={`min-h-11 rounded-full px-4 text-sm ${
-                  participants.includes(m.id)
-                    ? 'bg-teal-600 font-semibold text-white'
-                    : 'bg-white text-stone-600 shadow-sm'
-                }`}
+                onClick={() => toggle(participants, setParticipants, m.id)}
+                className={chipCls(participants.includes(m.id))}
               >
                 {m.nickname}
               </button>
@@ -284,13 +367,7 @@ export default function ExpenseFormPage() {
                   </div>
                 )
               })}
-              {customDiff !== null && customDiff !== 0 && (
-                <p className="text-sm text-orange-600">
-                  {customDiff > 0
-                    ? `還差 ${formatCents(customDiff)} 沒分完`
-                    : `多分了 ${formatCents(-customDiff)}`}
-                </p>
-              )}
+              <RemainingLine remaining={splitRemaining} />
             </div>
           )}
         </div>

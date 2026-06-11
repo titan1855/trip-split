@@ -49,7 +49,8 @@
 ### 3.2 核心功能
 
 **支出記帳**
-- 新增支出:品項名稱、金額、幣別、付款人(單人)、分攤對象(可全選/部分成員)、分攤方式(平分 / 自訂金額 / 自訂比例)、日期、分類(餐飲/交通/住宿/門票/購物/其他)、備註。
+- 新增支出:品項名稱、金額、幣別、付款人(**可多人,各自輸入付款金額,加總須等於總金額**;明細存 `expense_payers`)、分攤對象(可全選/部分成員)、分攤方式(平分 / 自訂金額 / 自訂比例)、日期、分類(餐飲/交通/住宿/門票/購物/其他)、備註。
+- 自訂金額分攤:每人金額手動輸入、未填視為 0,成員列表下方即時顯示「尚未分配金額」。
 - 支出列表:依日期分組顯示,可編輯、刪除。
 - **即時同步**:任何成員新增/修改支出,其他人的畫面透過 Supabase Realtime 立即更新,不用手動重新整理。
 
@@ -70,7 +71,7 @@
 ### 3.3 結算演算法(最少轉帳次數)
 
 ```
-1. 計算每位成員淨額 net[i] = 他付出的總額 − 他應分攤的總額(含已還款記錄)
+1. 計算每位成員淨額 net[i] = 他付出的總額(expense_payers 加總) − 他應分攤的總額(expense_splits 加總,含已還款記錄)
 2. 分成債權人(net > 0)與債務人(net < 0)兩組
 3. 貪婪法:每次取最大債務人與最大債權人配對,
    轉帳金額 = min(|債務|, 債權),更新兩者餘額,歸零者移出
@@ -110,12 +111,21 @@ create table expenses (
   amount_cents bigint not null,              -- 以「分」為單位的整數
   currency text not null default 'TWD',
   fx_rate numeric not null default 1,        -- 對主幣別匯率
-  payer_id uuid not null references members(id),
+  payer_id uuid references members(id),      -- 已退役:付款人改存 expense_payers,此欄僅為相容保留
   category text default '其他',
   spent_at date not null default current_date,
   note text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
+);
+
+-- 每筆支出的付款明細(付款人可多人,各自輸入金額)
+create table expense_payers (
+  id uuid primary key default gen_random_uuid(),
+  expense_id uuid not null references expenses(id) on delete cascade,
+  member_id uuid not null references members(id),
+  paid_cents bigint not null,                -- 此成員付款金額(分)
+  unique (expense_id, member_id)
 );
 
 -- 每筆支出的分攤明細
@@ -136,19 +146,21 @@ create table trip_fx_rates (
 );
 
 -- 開啟 Realtime
-alter publication supabase_realtime add table expenses, expense_splits, members, trip_fx_rates;
+alter publication supabase_realtime add table expenses, expense_splits, expense_payers, members, trip_fx_rates;
 
 -- RLS:開啟但允許 anon 存取(安全模型見第 5 節)
 alter table trips enable row level security;
 alter table members enable row level security;
 alter table expenses enable row level security;
 alter table expense_splits enable row level security;
+alter table expense_payers enable row level security;
 alter table trip_fx_rates enable row level security;
 
 create policy "anon all" on trips for all using (true) with check (true);
 create policy "anon all" on members for all using (true) with check (true);
 create policy "anon all" on expenses for all using (true) with check (true);
 create policy "anon all" on expense_splits for all using (true) with check (true);
+create policy "anon all" on expense_payers for all using (true) with check (true);
 create policy "anon all" on trip_fx_rates for all using (true) with check (true);
 ```
 
