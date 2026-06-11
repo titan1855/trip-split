@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTripContext } from './TripLayout'
 import { deleteTrip } from '../lib/api'
 import { removeIdentity } from '../lib/storage'
+import { btnPrimary, errorBox, sectionTitle } from '../lib/ui'
 
 export default function MembersPage() {
   const { trip, members, myMemberId } = useTripContext()
@@ -47,33 +48,29 @@ export default function MembersPage() {
 
   return (
     <main className="px-4 pt-4">
-      <section className="rounded-2xl bg-white p-5 text-center shadow-sm">
-        <p className="text-sm text-stone-500">把邀請碼丟給旅伴</p>
-        <p className="mt-2 font-mono text-4xl font-bold tracking-[0.3em] text-teal-700">
+      <section className="rounded-2xl bg-white p-5 text-center shadow-sm dark:bg-stone-900">
+        <p className="text-sm text-stone-500 dark:text-stone-400">把邀請碼丟給旅伴</p>
+        <p className="mt-2 font-mono text-4xl font-bold tracking-[0.3em] text-teal-700 dark:text-teal-300">
           {trip.invite_code}
         </p>
-        <button
-          type="button"
-          onClick={handleShare}
-          className="mt-4 min-h-12 w-full rounded-xl bg-teal-600 font-semibold text-white active:bg-teal-700"
-        >
+        <button type="button" onClick={handleShare} className={`mt-4 ${btnPrimary}`}>
           {copied ? '複製好了!' : '分享邀請碼'}
         </button>
       </section>
 
       <section className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-teal-800">
+        <h2 className={sectionTitle}>
           成員({members.length} 人)
         </h2>
         <ul className="space-y-2">
           {members.map((m) => (
             <li
               key={m.id}
-              className="flex min-h-12 items-center justify-between rounded-2xl bg-white px-5 py-3 shadow-sm"
+              className="flex min-h-12 items-center justify-between rounded-2xl bg-white px-5 py-3 shadow-sm dark:bg-stone-900"
             >
-              <span className="font-medium text-stone-900">{m.nickname}</span>
+              <span className="font-medium text-stone-900 dark:text-stone-100">{m.nickname}</span>
               {m.id === myMemberId && (
-                <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
+                <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700 dark:bg-teal-900 dark:text-teal-300">
                   我
                 </span>
               )}
@@ -82,10 +79,12 @@ export default function MembersPage() {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-2xl bg-white px-5 py-4 shadow-sm">
+      <section className="mt-6 rounded-2xl bg-white px-5 py-4 shadow-sm dark:bg-stone-900">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-stone-500">主幣別</span>
-          <span className="font-semibold text-stone-900">{trip.base_currency}</span>
+          <span className="text-sm text-stone-500 dark:text-stone-400">主幣別</span>
+          <span className="font-semibold text-stone-900 dark:text-stone-100">
+            {trip.base_currency}
+          </span>
         </div>
         {/* 匯率設定在 Phase 5 加入 */}
       </section>
@@ -95,15 +94,15 @@ export default function MembersPage() {
           type="button"
           onClick={handleDeleteTrip}
           disabled={deleting}
-          className="min-h-12 w-full rounded-xl border border-red-300 font-semibold text-red-600 active:bg-red-50 disabled:opacity-50"
+          className="min-h-12 w-full rounded-xl border border-red-300 font-semibold text-red-600 active:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:active:bg-red-950"
         >
           {deleting ? '刪除中…' : '刪除整個行程'}
         </button>
-        <p className="mt-2 text-center text-xs text-stone-400">
+        <p className="mt-2 text-center text-xs text-stone-400 dark:text-stone-500">
           會刪掉所有帳目與成員,大家都看不到,無法復原
         </p>
         {error && (
-          <p role="alert" className="mt-2 rounded-xl bg-orange-50 px-4 py-3 text-sm text-orange-700">
+          <p role="alert" className={`mt-2 ${errorBox}`}>
             {error}
           </p>
         )}

@@ -4,6 +4,7 @@ import { useTripData } from '../hooks/useTripData'
 import { addMember, type ExpenseDetail } from '../lib/api'
 import { getIdentity, saveIdentity } from '../lib/storage'
 import type { Member, Trip } from '../lib/database.types'
+import { inputCls, btnPrimary, errorBox } from '../lib/ui'
 
 export interface TripContext {
   trip: Trip
@@ -31,7 +32,7 @@ export default function TripLayout() {
 
   if (loading) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-teal-50 text-teal-600">
+      <main className="flex min-h-dvh items-center justify-center bg-teal-50 text-teal-600 dark:bg-stone-950 dark:text-teal-400">
         讀取中…
       </main>
     )
@@ -39,9 +40,9 @@ export default function TripLayout() {
 
   if (error || !trip) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-teal-50 p-6 text-center">
-        <p className="text-teal-900">{error ?? '找不到這個行程,連結可能有誤'}</p>
-        <Link to="/" className="font-semibold text-teal-600 underline">
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-teal-50 p-6 text-center dark:bg-stone-950">
+        <p className="text-teal-900 dark:text-teal-100">{error ?? '找不到這個行程,連結可能有誤'}</p>
+        <Link to="/" className="font-semibold text-teal-600 underline dark:text-teal-400">
           回首頁
         </Link>
       </main>
@@ -62,8 +63,8 @@ export default function TripLayout() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-teal-50">
-      <header className="sticky top-0 z-10 flex min-h-12 items-center gap-3 bg-teal-600 px-4 py-2 text-white">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-teal-50 dark:bg-stone-950">
+      <header className="sticky top-0 z-10 flex min-h-12 items-center gap-3 bg-teal-600 px-4 py-2 text-white dark:bg-teal-900">
         <Link to="/" aria-label="回首頁" className="flex min-h-11 min-w-11 items-center text-xl">
           ‹
         </Link>
@@ -74,7 +75,7 @@ export default function TripLayout() {
         <Outlet context={context} />
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-teal-100 bg-white pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-teal-100 bg-white pb-[env(safe-area-inset-bottom)] dark:border-stone-800 dark:bg-stone-900">
         {TABS.map((tab) => (
           <NavLink
             key={tab.to}
@@ -82,7 +83,9 @@ export default function TripLayout() {
             end={tab.end}
             className={({ isActive }) =>
               `flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs ${
-                isActive ? 'font-semibold text-teal-600' : 'text-stone-400'
+                isActive
+                  ? 'font-semibold text-teal-600 dark:text-teal-400'
+                  : 'text-stone-400 dark:text-stone-500'
               }`
             }
           >
@@ -127,27 +130,25 @@ function JoinPrompt({
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center bg-teal-50 px-6">
-      <h1 className="text-2xl font-bold text-teal-700">加入「{trip.name}」</h1>
-      <p className="mt-1 text-sm text-teal-600">取個旅伴看得懂的暱稱就能開始記帳</p>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center bg-teal-50 px-6 dark:bg-stone-950">
+      <h1 className="text-2xl font-bold text-teal-700 dark:text-teal-300">加入「{trip.name}」</h1>
+      <p className="mt-1 text-sm text-teal-600 dark:text-teal-400">
+        取個旅伴看得懂的暱稱就能開始記帳
+      </p>
       <form onSubmit={handleJoin} className="mt-6 space-y-4">
         <input
-          className="w-full min-h-11 rounded-xl border border-teal-200 bg-white px-4 text-base focus:border-teal-500 focus:outline-none"
+          className={inputCls}
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
           placeholder="我的暱稱"
           required
           maxLength={12}
         />
-        <button
-          type="submit"
-          disabled={busy}
-          className="min-h-12 w-full rounded-xl bg-teal-600 font-semibold text-white disabled:opacity-50"
-        >
+        <button type="submit" disabled={busy} className={btnPrimary}>
           {busy ? '加入中…' : '加入行程'}
         </button>
         {error && (
-          <p role="alert" className="rounded-xl bg-orange-50 px-4 py-3 text-sm text-orange-700">
+          <p role="alert" className={errorBox}>
             {error}
           </p>
         )}

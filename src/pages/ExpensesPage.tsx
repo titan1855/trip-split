@@ -39,17 +39,17 @@ export default function ExpensesPage() {
   return (
     <main className="px-4 pt-4">
       {expenses.length === 0 && (
-        <div className="mt-24 text-center text-teal-700">
+        <div className="mt-24 text-center text-teal-700 dark:text-teal-300">
           <p className="text-4xl">🧾</p>
           <p className="mt-3 font-medium">還沒有帳</p>
-          <p className="mt-1 text-sm text-teal-500">點下面的「記一筆」開始吧</p>
+          <p className="mt-1 text-sm text-teal-500 dark:text-teal-500">點下面的「記一筆」開始吧</p>
         </div>
       )}
 
       <div className="space-y-6">
         {groups.map((group) => (
           <section key={group.date}>
-            <h2 className="mb-2 text-sm font-semibold text-teal-700">
+            <h2 className="mb-2 text-sm font-semibold text-teal-700 dark:text-teal-300">
               {formatDateLabel(group.date)}
             </h2>
             <ul className="space-y-2">
@@ -57,22 +57,22 @@ export default function ExpensesPage() {
                 <li key={expense.id}>
                   <Link
                     to={`edit/${expense.id}`}
-                    className="flex min-h-16 items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm active:bg-teal-100"
+                    className="flex min-h-16 items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm active:bg-teal-100 dark:bg-stone-900 dark:active:bg-stone-800"
                   >
                     <span className="text-2xl">
                       {expense.kind === 'settlement' ? '🤝' : categoryEmoji(expense.category)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-stone-900">
+                      <span className="block truncate font-medium text-stone-900 dark:text-stone-100">
                         {expense.title}
                       </span>
-                      <span className="block text-xs text-stone-500">
+                      <span className="block text-xs text-stone-500 dark:text-stone-400">
                         {expense.kind === 'settlement'
                           ? '還款記錄'
                           : `${payersLabel(expense)} 付的 · ${expense.expense_splits.length} 人分`}
                       </span>
                     </span>
-                    <span className="font-semibold tabular-nums text-stone-900">
+                    <span className="font-semibold tabular-nums text-stone-900 dark:text-stone-100">
                       {formatMoney(expense.amount_cents, expense.currency)}
                     </span>
                   </Link>

@@ -4,6 +4,7 @@ import { createTrip, findTripByInviteCode, addMember } from '../lib/api'
 import { getIdentities, saveIdentity } from '../lib/storage'
 import { normalizeInviteCode } from '../lib/inviteCode'
 import { CURRENCIES } from '../lib/constants'
+import { inputCls, labelCls, btnPrimary, errorBox } from '../lib/ui'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -70,26 +71,24 @@ export default function Home() {
     }
   }
 
-  const inputCls =
-    'w-full min-h-11 rounded-xl border border-teal-200 bg-white px-4 text-base focus:border-teal-500 focus:outline-none'
-  const labelCls = 'mb-1 block text-sm font-medium text-teal-900'
-
   return (
-    <main className="mx-auto min-h-dvh max-w-md bg-teal-50 px-5 pb-10 pt-12">
-      <h1 className="text-3xl font-bold text-teal-700">旅行拆帳</h1>
-      <p className="mt-1 text-sm text-teal-600">跟旅伴一起記帳,回來算一下誰欠誰</p>
+    <main className="mx-auto min-h-dvh max-w-md bg-teal-50 px-5 pb-10 pt-12 dark:bg-stone-950">
+      <h1 className="text-3xl font-bold text-teal-700 dark:text-teal-300">旅行拆帳</h1>
+      <p className="mt-1 text-sm text-teal-600 dark:text-teal-400">
+        跟旅伴一起記帳,回來算一下誰欠誰
+      </p>
 
       {identities.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-2 text-sm font-semibold text-teal-800">我的行程</h2>
+          <h2 className="mb-2 text-sm font-semibold text-teal-800 dark:text-teal-300">我的行程</h2>
           <ul className="space-y-2">
             {identities.map((i) => (
               <li key={i.tripId}>
                 <Link
                   to={`/trip/${i.tripId}`}
-                  className="flex min-h-14 items-center justify-between rounded-2xl bg-white px-5 py-3 shadow-sm active:bg-teal-100"
+                  className="flex min-h-14 items-center justify-between rounded-2xl bg-white px-5 py-3 shadow-sm active:bg-teal-100 dark:bg-stone-900 dark:active:bg-stone-800"
                 >
-                  <span className="font-medium text-teal-950">{i.tripName}</span>
+                  <span className="font-medium text-teal-950 dark:text-teal-100">{i.tripName}</span>
                   <span className="text-teal-400">›</span>
                 </Link>
               </li>
@@ -108,7 +107,7 @@ export default function Home() {
         </button>
 
         {mode === 'create' && (
-          <form onSubmit={handleCreate} className="space-y-4 rounded-2xl bg-white p-5 shadow-sm">
+          <form onSubmit={handleCreate} className="space-y-4 rounded-2xl bg-white p-5 shadow-sm dark:bg-stone-900">
             <div>
               <label htmlFor="trip-name" className={labelCls}>
                 行程名稱
@@ -157,7 +156,7 @@ export default function Home() {
             <button
               type="submit"
               disabled={busy}
-              className="min-h-12 w-full rounded-xl bg-teal-600 font-semibold text-white disabled:opacity-50"
+              className={btnPrimary}
             >
               {busy ? '建立中…' : '建立行程'}
             </button>
@@ -167,13 +166,13 @@ export default function Home() {
         <button
           type="button"
           onClick={() => setMode(mode === 'join' ? 'none' : 'join')}
-          className="min-h-12 w-full rounded-2xl border-2 border-teal-600 px-5 font-semibold text-teal-700 active:bg-teal-100"
+          className="min-h-12 w-full rounded-2xl border-2 border-teal-600 px-5 font-semibold text-teal-700 active:bg-teal-100 dark:text-teal-300 dark:active:bg-stone-900"
         >
           用邀請碼加入
         </button>
 
         {mode === 'join' && (
-          <form onSubmit={handleJoin} className="space-y-4 rounded-2xl bg-white p-5 shadow-sm">
+          <form onSubmit={handleJoin} className="space-y-4 rounded-2xl bg-white p-5 shadow-sm dark:bg-stone-900">
             <div>
               <label htmlFor="invite-code" className={labelCls}>
                 邀請碼
@@ -207,7 +206,7 @@ export default function Home() {
             <button
               type="submit"
               disabled={busy}
-              className="min-h-12 w-full rounded-xl bg-teal-600 font-semibold text-white disabled:opacity-50"
+              className={btnPrimary}
             >
               {busy ? '加入中…' : '加入行程'}
             </button>
@@ -215,7 +214,7 @@ export default function Home() {
         )}
 
         {error && (
-          <p role="alert" className="rounded-xl bg-orange-50 px-4 py-3 text-sm text-orange-700">
+          <p role="alert" className={errorBox}>
             {error}
           </p>
         )}

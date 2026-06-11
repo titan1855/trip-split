@@ -11,6 +11,7 @@ import {
 import { formatCents, parseAmountToCents, parseCentsAllowZero, splitEvenly } from '../lib/money'
 import { todayStr } from '../lib/date'
 import { CATEGORIES } from '../lib/constants'
+import { inputCls, labelCls, btnPrimary, errorBox, chipCls } from '../lib/ui'
 
 type SplitMode = 'even' | 'custom'
 
@@ -67,7 +68,7 @@ export default function ExpenseFormPage() {
   // 編輯模式但資料還沒同步到(例如別人剛刪掉這筆)
   if (isEdit && !editing) {
     return (
-      <main className="px-4 pt-8 text-center text-stone-500">
+      <main className="px-4 pt-8 text-center text-stone-500 dark:text-stone-400">
         找不到這筆帳,可能已被旅伴刪除
       </main>
     )
@@ -181,21 +182,15 @@ export default function ExpenseFormPage() {
     }
   }
 
-  const inputCls =
-    'w-full min-h-11 rounded-xl border border-teal-200 bg-white px-4 text-base focus:border-teal-500 focus:outline-none'
-  const labelCls = 'mb-1 block text-sm font-medium text-teal-900'
-  const chipCls = (active: boolean) =>
-    `min-h-11 rounded-full px-4 text-sm ${
-      active ? 'bg-teal-600 font-semibold text-white' : 'bg-white text-stone-600 shadow-sm'
-    }`
-
   function RemainingLine({ remaining }: { remaining: number | null }) {
     if (remaining === null) return null
     if (remaining === 0) {
-      return <p className="mt-2 text-sm font-medium text-teal-600">✓ 分配完成</p>
+      return (
+        <p className="mt-2 text-sm font-medium text-teal-600 dark:text-teal-400">✓ 分配完成</p>
+      )
     }
     return (
-      <p className="mt-2 text-sm font-medium text-orange-600">
+      <p className="mt-2 text-sm font-medium text-orange-600 dark:text-orange-400">
         {remaining > 0
           ? `尚未分配:${formatCents(remaining)} ${trip.base_currency}`
           : `超出總金額:${formatCents(-remaining)} ${trip.base_currency}`}
@@ -205,7 +200,9 @@ export default function ExpenseFormPage() {
 
   return (
     <main className="px-4 pb-8 pt-4">
-      <h2 className="mb-4 text-xl font-bold text-teal-800">{isEdit ? '改這筆帳' : '記一筆'}</h2>
+      <h2 className="mb-4 text-xl font-bold text-teal-800 dark:text-teal-300">
+        {isEdit ? '改這筆帳' : '記一筆'}
+      </h2>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
@@ -276,7 +273,7 @@ export default function ExpenseFormPage() {
                 const member = members.find((m) => m.id === id)
                 return (
                   <div key={id} className="flex items-center gap-3">
-                    <span className="w-20 flex-none truncate text-sm text-stone-700">
+                    <span className="w-20 flex-none truncate text-sm text-stone-700 dark:text-stone-300">
                       {member?.nickname}
                     </span>
                     <input
@@ -322,7 +319,7 @@ export default function ExpenseFormPage() {
               className={`min-h-11 rounded-xl text-sm ${
                 splitMode === 'even'
                   ? 'bg-teal-600 font-semibold text-white'
-                  : 'bg-white text-stone-600 shadow-sm'
+                  : 'bg-white text-stone-600 shadow-sm dark:bg-stone-800 dark:text-stone-300'
               }`}
             >
               平分
@@ -333,7 +330,7 @@ export default function ExpenseFormPage() {
               className={`min-h-11 rounded-xl text-sm ${
                 splitMode === 'custom'
                   ? 'bg-teal-600 font-semibold text-white'
-                  : 'bg-white text-stone-600 shadow-sm'
+                  : 'bg-white text-stone-600 shadow-sm dark:bg-stone-800 dark:text-stone-300'
               }`}
             >
               自訂金額
@@ -341,7 +338,7 @@ export default function ExpenseFormPage() {
           </div>
 
           {splitMode === 'even' && totalCents !== null && participants.length > 0 && (
-            <p className="mt-2 text-sm text-stone-500">
+            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
               每人約 {formatCents(splitEvenly(totalCents, participants.length)[participants.length - 1])}{' '}
               {trip.base_currency},除不盡的零頭由前面的人多攤
             </p>
@@ -353,7 +350,7 @@ export default function ExpenseFormPage() {
                 const member = members.find((m) => m.id === id)
                 return (
                   <div key={id} className="flex items-center gap-3">
-                    <span className="w-20 flex-none truncate text-sm text-stone-700">
+                    <span className="w-20 flex-none truncate text-sm text-stone-700 dark:text-stone-300">
                       {member?.nickname}
                     </span>
                     <input
@@ -402,17 +399,13 @@ export default function ExpenseFormPage() {
         </div>
 
         {error && (
-          <p role="alert" className="rounded-xl bg-orange-50 px-4 py-3 text-sm text-orange-700">
+          <p role="alert" className={errorBox}>
             {error}
           </p>
         )}
 
         <div className="space-y-3 pt-2">
-          <button
-            type="submit"
-            disabled={busy}
-            className="min-h-12 w-full rounded-xl bg-teal-600 font-semibold text-white disabled:opacity-50"
-          >
+          <button type="submit" disabled={busy} className={btnPrimary}>
             {busy ? '儲存中…' : isEdit ? '存檔' : '記下來'}
           </button>
           {isEdit && (
@@ -420,7 +413,7 @@ export default function ExpenseFormPage() {
               type="button"
               onClick={handleDelete}
               disabled={busy}
-              className="min-h-12 w-full rounded-xl border border-orange-300 font-semibold text-orange-600 disabled:opacity-50"
+              className="min-h-12 w-full rounded-xl border border-orange-300 font-semibold text-orange-600 disabled:opacity-50 dark:border-orange-900 dark:text-orange-400"
             >
               刪掉這筆
             </button>
