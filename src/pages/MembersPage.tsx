@@ -188,36 +188,38 @@ function FxRateSection() {
       {available.length > 0 && (
         <form
           onSubmit={handleAdd}
-          className="mt-2 flex items-center gap-2 rounded-2xl bg-white p-3 shadow-sm dark:bg-stone-900"
+          className="mt-2 space-y-2 rounded-2xl bg-white p-3 shadow-sm dark:bg-stone-900"
         >
           <select
-            className={`${inputCls} w-28 flex-none`}
+            className={inputCls}
             value={newCurrency}
             onChange={(e) => setNewCurrency(e.target.value)}
             aria-label="新增幣別"
           >
-            <option value="">幣別</option>
+            <option value="">選幣別</option>
             {available.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
           </select>
-          <input
-            className={`${inputCls} tabular-nums`}
-            value={newRate}
-            onChange={(e) => setNewRate(e.target.value)}
-            placeholder={`兌 ${trip.base_currency} 匯率`}
-            inputMode="decimal"
-            aria-label="匯率"
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="min-h-11 flex-none rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white active:bg-teal-700 disabled:opacity-50"
-          >
-            加入
-          </button>
+          <div className="flex gap-2">
+            <input
+              className={`${inputCls} tabular-nums`}
+              value={newRate}
+              onChange={(e) => setNewRate(e.target.value)}
+              placeholder={`兌 ${trip.base_currency} 匯率`}
+              inputMode="decimal"
+              aria-label="匯率"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="min-h-11 flex-none rounded-xl bg-teal-600 px-5 text-sm font-semibold text-white active:bg-teal-700 disabled:opacity-50"
+            >
+              加入
+            </button>
+          </div>
         </form>
       )}
 
