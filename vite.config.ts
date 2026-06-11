@@ -15,11 +15,16 @@ export default defineConfig({
       manifest: {
         name: '旅行拆帳',
         short_name: '拆帳',
+        description: '跟旅伴一起記帳,回來算一下誰欠誰',
+        lang: 'zh-Hant',
         display: 'standalone',
         theme_color: '#0d9488',
-        background_color: '#ffffff',
-        // 圖示於 Phase 4 補上
-        icons: [],
+        background_color: '#f0fdfa',
+        icons: [
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
     }),
   ],
