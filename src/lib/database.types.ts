@@ -1,9 +1,10 @@
 // 對應 SPEC.md 第 4 節的 Supabase schema
+// 注意:必須用 type 別名而非 interface,supabase-js 的泛型約束才吃得到(interface 無隱含 index signature)
 export type ExpenseKind = 'expense' | 'settlement'
 
 export type ExpenseCategory = '餐飲' | '交通' | '住宿' | '門票' | '購物' | '其他'
 
-export interface Trip {
+export type Trip = {
   id: string
   name: string
   invite_code: string
@@ -11,14 +12,14 @@ export interface Trip {
   created_at: string
 }
 
-export interface Member {
+export type Member = {
   id: string
   trip_id: string
   nickname: string
   created_at: string
 }
 
-export interface Expense {
+export type Expense = {
   id: string
   trip_id: string
   kind: ExpenseKind
@@ -36,7 +37,7 @@ export interface Expense {
   updated_at: string
 }
 
-export interface ExpenseSplit {
+export type ExpenseSplit = {
   id: string
   expense_id: string
   member_id: string
@@ -44,14 +45,14 @@ export interface ExpenseSplit {
   share_cents: number
 }
 
-export interface TripFxRate {
+export type TripFxRate = {
   trip_id: string
   currency: string
   rate: number
 }
 
 /** supabase-js v2 的 Database 泛型結構 */
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       trips: {
@@ -86,9 +87,9 @@ export interface Database {
         Relationships: []
       }
     }
-    Views: Record<string, never>
-    Functions: Record<string, never>
-    Enums: Record<string, never>
-    CompositeTypes: Record<string, never>
+    Views: Record<never, never>
+    Functions: Record<never, never>
+    Enums: Record<never, never>
+    CompositeTypes: Record<never, never>
   }
 }
