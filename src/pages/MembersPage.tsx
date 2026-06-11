@@ -1,9 +1,32 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTripContext } from './TripLayout'
+import { deleteTrip } from '../lib/api'
+import { removeIdentity } from '../lib/storage'
 
 export default function MembersPage() {
   const { trip, members, myMemberId } = useTripContext()
+  const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleDeleteTrip() {
+    const ok = window.confirm(
+      `確定要刪除「${trip.name}」嗎?\n\n所有帳目和成員都會一起刪掉,每個旅伴都看不到,而且無法復原!`,
+    )
+    if (!ok) return
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteTrip(trip.id)
+      removeIdentity(trip.id)
+      navigate('/')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '刪除行程失敗,請再試一次')
+      setDeleting(false)
+    }
+  }
 
   const shareText = `來加入「${trip.name}」一起記帳!邀請碼:${trip.invite_code}\n${location.origin}${import.meta.env.BASE_URL}#/trip/${trip.id}`
 
@@ -65,6 +88,25 @@ export default function MembersPage() {
           <span className="font-semibold text-stone-900">{trip.base_currency}</span>
         </div>
         {/* 匯率設定在 Phase 5 加入 */}
+      </section>
+
+      <section className="mb-6 mt-10">
+        <button
+          type="button"
+          onClick={handleDeleteTrip}
+          disabled={deleting}
+          className="min-h-12 w-full rounded-xl border border-red-300 font-semibold text-red-600 active:bg-red-50 disabled:opacity-50"
+        >
+          {deleting ? '刪除中…' : '刪除整個行程'}
+        </button>
+        <p className="mt-2 text-center text-xs text-stone-400">
+          會刪掉所有帳目與成員,大家都看不到,無法復原
+        </p>
+        {error && (
+          <p role="alert" className="mt-2 rounded-xl bg-orange-50 px-4 py-3 text-sm text-orange-700">
+            {error}
+          </p>
+        )}
       </section>
     </main>
   )

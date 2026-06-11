@@ -40,6 +40,22 @@ export async function createTrip(
   return { trip, member }
 }
 
+/**
+ * 刪除整個行程(連同所有帳目與成員,無法復原)。
+ * 注意順序:expenses.payer_id / expense_splits.member_id 等 FK 沒有 cascade,
+ * 直接刪 trips 會被擋,必須先刪支出(cascade 帶走明細)再刪成員、最後刪行程。
+ */
+export async function deleteTrip(tripId: string): Promise<void> {
+  const { error: expError } = await supabase.from('expenses').delete().eq('trip_id', tripId)
+  if (expError) fail('刪除行程失敗(帳目清除錯誤),請再試一次', expError)
+
+  const { error: memberError } = await supabase.from('members').delete().eq('trip_id', tripId)
+  if (memberError) fail('刪除行程失敗(成員清除錯誤),請再試一次', memberError)
+
+  const { error: tripError } = await supabase.from('trips').delete().eq('id', tripId)
+  if (tripError) fail('刪除行程失敗,請檢查網路後再試一次', tripError)
+}
+
 export async function fetchTrip(tripId: string): Promise<Trip | null> {
   const { data, error } = await supabase.from('trips').select().eq('id', tripId).maybeSingle()
   if (error) fail('讀取行程失敗,請檢查網路後再試一次', error)
