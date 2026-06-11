@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { generateInviteCode } from './inviteCode'
 import { todayStr } from './date'
-import type { Expense, ExpensePayer, ExpenseSplit, Member, Trip } from './database.types'
+import type { Expense, ExpensePayer, ExpenseSplit, Member, Trip, TripFxRate } from './database.types'
 
 export type ExpenseDetail = Expense & {
   expense_splits: ExpenseSplit[]
@@ -107,6 +107,34 @@ export async function addMember(tripId: string, nickname: string): Promise<Membe
     .single()
   if (error) fail('加入行程失敗,請檢查網路後再試一次', error)
   return data
+}
+
+// ---------- 匯率 ----------
+
+export async function fetchFxRates(tripId: string): Promise<TripFxRate[]> {
+  const { data, error } = await supabase
+    .from('trip_fx_rates')
+    .select()
+    .eq('trip_id', tripId)
+    .order('currency')
+  if (error) fail('讀取匯率失敗,請檢查網路後再試一次', error)
+  return data
+}
+
+export async function upsertFxRate(tripId: string, currency: string, rate: number): Promise<void> {
+  const { error } = await supabase
+    .from('trip_fx_rates')
+    .upsert({ trip_id: tripId, currency, rate })
+  if (error) fail('儲存匯率失敗,請再試一次', error)
+}
+
+export async function deleteFxRate(tripId: string, currency: string): Promise<void> {
+  const { error } = await supabase
+    .from('trip_fx_rates')
+    .delete()
+    .eq('trip_id', tripId)
+    .eq('currency', currency)
+  if (error) fail('刪除匯率失敗,請再試一次', error)
 }
 
 // ---------- 支出 ----------

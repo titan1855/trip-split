@@ -21,7 +21,7 @@ function centsToInput(cents: number): string {
 }
 
 export default function ExpenseFormPage() {
-  const { trip, members, expenses, myMemberId, reloadExpenses } = useTripContext()
+  const { trip, members, expenses, fxRates, myMemberId, reloadExpenses } = useTripContext()
   const { expenseId } = useParams()
   const navigate = useNavigate()
 
@@ -30,6 +30,9 @@ export default function ExpenseFormPage() {
 
   const [title, setTitle] = useState(editing?.title ?? '')
   const [amount, setAmount] = useState(editing ? centsToInput(editing.amount_cents) : '')
+  // 幣別與匯率快照:記帳當下把行程匯率寫進 fx_rate,之後改行程匯率不影響這筆帳
+  const [currency, setCurrency] = useState(editing?.currency ?? trip.base_currency)
+  const [fxRate, setFxRate] = useState(editing?.fx_rate ?? 1)
   const [category, setCategory] = useState(editing?.category ?? '餐飲')
   const [spentAt, setSpentAt] = useState(editing?.spent_at ?? todayStr())
   const [note, setNote] = useState(editing?.note ?? '')
@@ -149,8 +152,8 @@ export default function ExpenseFormPage() {
     const payload = {
       title: title.trim(),
       amount_cents: totalCents!,
-      currency: trip.base_currency, // 多幣別在 Phase 5 開放
-      fx_rate: 1,
+      currency,
+      fx_rate: currency === trip.base_currency ? 1 : fxRate,
       category,
       spent_at: spentAt,
       note: note.trim() || null,
@@ -192,8 +195,8 @@ export default function ExpenseFormPage() {
     return (
       <p className="mt-2 text-sm font-medium text-orange-600 dark:text-orange-400">
         {remaining > 0
-          ? `尚未分配:${formatCents(remaining)} ${trip.base_currency}`
-          : `超出總金額:${formatCents(-remaining)} ${trip.base_currency}`}
+          ? `尚未分配:${formatCents(remaining)} ${currency}`
+          : `超出總金額:${formatCents(-remaining)} ${currency}`}
       </p>
     )
   }
@@ -222,17 +225,53 @@ export default function ExpenseFormPage() {
 
         <div>
           <label htmlFor="exp-amount" className={labelCls}>
-            金額({trip.base_currency})
+            金額
           </label>
-          <input
-            id="exp-amount"
-            className={`${inputCls} text-lg tabular-nums`}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0"
-            inputMode="decimal"
-            required
-          />
+          <div className="flex gap-2">
+            <input
+              id="exp-amount"
+              className={`${inputCls} text-lg tabular-nums`}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0"
+              inputMode="decimal"
+              required
+            />
+            <select
+              className={`${inputCls} w-28 flex-none`}
+              value={currency}
+              onChange={(e) => {
+                const c = e.target.value
+                setCurrency(c)
+                setFxRate(
+                  c === trip.base_currency
+                    ? 1
+                    : (fxRates.find((r) => r.currency === c)?.rate ?? fxRate),
+                )
+              }}
+              aria-label="幣別"
+            >
+              {[...new Set([trip.base_currency, ...fxRates.map((r) => r.currency), ...(editing ? [editing.currency] : [])])].map(
+                (c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+          {currency !== trip.base_currency && (
+            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+              匯率快照 1 {currency} = {fxRate} {trip.base_currency}
+              {totalCents !== null &&
+                `,約 ${formatCents(Math.round(totalCents * fxRate))} ${trip.base_currency}`}
+            </p>
+          )}
+          {fxRates.length === 0 && !editing && (
+            <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">
+              要記外幣?先到「設定」加匯率
+            </p>
+          )}
         </div>
 
         <div>
@@ -340,7 +379,7 @@ export default function ExpenseFormPage() {
           {splitMode === 'even' && totalCents !== null && participants.length > 0 && (
             <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
               每人約 {formatCents(splitEvenly(totalCents, participants.length)[participants.length - 1])}{' '}
-              {trip.base_currency},除不盡的零頭由前面的人多攤
+              {currency},除不盡的零頭由前面的人多攤
             </p>
           )}
 

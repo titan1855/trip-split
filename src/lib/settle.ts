@@ -29,7 +29,7 @@ export interface Transfer {
  * 把一筆支出的明細列換算成主幣別,並保證換算後加總等於 targetCents
  * (floor + 最大餘數法分配差額,避免付款側與分攤側因各自四捨五入而差 1 分)
  */
-function convertRows(
+export function convertRows(
   rows: { member_id: string; cents: number }[],
   rate: number,
   targetCents: number,

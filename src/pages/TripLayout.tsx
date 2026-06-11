@@ -3,16 +3,18 @@ import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router
 import { useTripData } from '../hooks/useTripData'
 import { addMember, type ExpenseDetail } from '../lib/api'
 import { getIdentity, saveIdentity } from '../lib/storage'
-import type { Member, Trip } from '../lib/database.types'
+import type { Member, Trip, TripFxRate } from '../lib/database.types'
 import { inputCls, btnPrimary, errorBox } from '../lib/ui'
 
 export interface TripContext {
   trip: Trip
   members: Member[]
   expenses: ExpenseDetail[]
+  fxRates: TripFxRate[]
   myMemberId: string
   /** 寫入後主動重抓,不等 Realtime(自己的操作要立刻看到) */
   reloadExpenses: () => Promise<void>
+  reloadFxRates: () => Promise<void>
 }
 
 export function useTripContext(): TripContext {
@@ -22,12 +24,14 @@ export function useTripContext(): TripContext {
 const TABS = [
   { to: '', label: '支出', icon: '📒', end: true },
   { to: 'settle', label: '結算', icon: '🤝', end: false },
+  { to: 'stats', label: '統計', icon: '📊', end: false },
   { to: 'members', label: '設定', icon: '⚙️', end: false },
 ] as const
 
 export default function TripLayout() {
   const { id = '' } = useParams()
-  const { trip, members, expenses, loading, error, reloadExpenses } = useTripData(id)
+  const { trip, members, expenses, fxRates, loading, error, reloadExpenses, reloadFxRates } =
+    useTripData(id)
   const [identity, setIdentity] = useState(() => getIdentity(id))
 
   if (loading) {
@@ -58,8 +62,10 @@ export default function TripLayout() {
     trip,
     members,
     expenses,
+    fxRates,
     myMemberId: identity.memberId,
     reloadExpenses,
+    reloadFxRates,
   }
 
   return (

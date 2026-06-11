@@ -1,9 +1,18 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTripContext } from './TripLayout'
-import { deleteTrip } from '../lib/api'
+import { deleteFxRate, deleteTrip, upsertFxRate } from '../lib/api'
 import { removeIdentity } from '../lib/storage'
-import { btnPrimary, errorBox, sectionTitle } from '../lib/ui'
+import { CURRENCIES } from '../lib/constants'
+import { btnPrimary, errorBox, inputCls, sectionTitle } from '../lib/ui'
+
+/** 匯率輸入驗證:正數,最多 6 位小數 */
+function parseRate(input: string): number | null {
+  const t = input.trim()
+  if (!/^\d+(\.\d{1,6})?$/.test(t)) return null
+  const rate = Number(t)
+  return rate > 0 ? rate : null
+}
 
 export default function MembersPage() {
   const { trip, members, myMemberId } = useTripContext()
@@ -86,8 +95,10 @@ export default function MembersPage() {
             {trip.base_currency}
           </span>
         </div>
-        {/* 匯率設定在 Phase 5 加入 */}
       </section>
+
+      <FxRateSection />
+
 
       <section className="mb-6 mt-10">
         <button
@@ -108,5 +119,187 @@ export default function MembersPage() {
         )}
       </section>
     </main>
+  )
+}
+
+/** 匯率設定:支出可用外幣記,結算自動換回主幣別;這裡的匯率是「新增支出時的預設值」 */
+function FxRateSection() {
+  const { trip, fxRates, reloadFxRates } = useTripContext()
+  const [newCurrency, setNewCurrency] = useState('')
+  const [newRate, setNewRate] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const available = CURRENCIES.filter(
+    (c) => c !== trip.base_currency && !fxRates.some((r) => r.currency === c),
+  )
+
+  async function handleAdd(e: FormEvent) {
+    e.preventDefault()
+    const rate = parseRate(newRate)
+    if (!newCurrency) {
+      setError('先選一個幣別')
+      return
+    }
+    if (rate === null) {
+      setError('匯率要是正數,例如 0.21')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await upsertFxRate(trip.id, newCurrency, rate)
+      await reloadFxRates()
+      setNewCurrency('')
+      setNewRate('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '儲存匯率失敗,請再試一次')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="mt-6">
+      <h2 className={sectionTitle}>匯率(記外幣用)</h2>
+      <p className="mb-2 text-xs text-stone-400 dark:text-stone-500">
+        設定後記帳可選外幣,結算自動換回 {trip.base_currency};改匯率不影響已記的帳
+      </p>
+
+      <ul className="space-y-2">
+        {fxRates.map((r) => (
+          <FxRateRow
+            key={`${r.currency}-${r.rate}`}
+            currency={r.currency}
+            rate={r.rate}
+            base={trip.base_currency}
+            onSave={async (rate) => {
+              await upsertFxRate(trip.id, r.currency, rate)
+              await reloadFxRates()
+            }}
+            onDelete={async () => {
+              await deleteFxRate(trip.id, r.currency)
+              await reloadFxRates()
+            }}
+          />
+        ))}
+      </ul>
+
+      {available.length > 0 && (
+        <form
+          onSubmit={handleAdd}
+          className="mt-2 flex items-center gap-2 rounded-2xl bg-white p-3 shadow-sm dark:bg-stone-900"
+        >
+          <select
+            className={`${inputCls} w-28 flex-none`}
+            value={newCurrency}
+            onChange={(e) => setNewCurrency(e.target.value)}
+            aria-label="新增幣別"
+          >
+            <option value="">幣別</option>
+            {available.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <input
+            className={`${inputCls} tabular-nums`}
+            value={newRate}
+            onChange={(e) => setNewRate(e.target.value)}
+            placeholder={`兌 ${trip.base_currency} 匯率`}
+            inputMode="decimal"
+            aria-label="匯率"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="min-h-11 flex-none rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white active:bg-teal-700 disabled:opacity-50"
+          >
+            加入
+          </button>
+        </form>
+      )}
+
+      {error && (
+        <p role="alert" className={`mt-2 ${errorBox}`}>
+          {error}
+        </p>
+      )}
+    </section>
+  )
+}
+
+function FxRateRow({
+  currency,
+  rate,
+  base,
+  onSave,
+  onDelete,
+}: {
+  currency: string
+  rate: number
+  base: string
+  onSave: (rate: number) => Promise<void>
+  onDelete: () => Promise<void>
+}) {
+  const [value, setValue] = useState(String(rate))
+  const [busy, setBusy] = useState(false)
+  const changed = value.trim() !== String(rate)
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true)
+    try {
+      await action()
+    } catch {
+      // 失敗時還原輸入,錯誤訊息由上層 Realtime 重抓後狀態自然回復
+      setValue(String(rate))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <li className="flex items-center gap-2 rounded-2xl bg-white p-3 shadow-sm dark:bg-stone-900">
+      <span className="w-16 flex-none text-sm font-semibold text-stone-700 dark:text-stone-300">
+        1 {currency}
+      </span>
+      <span className="flex-none text-sm text-stone-400">=</span>
+      <input
+        className={`${inputCls} tabular-nums`}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        inputMode="decimal"
+        aria-label={`${currency} 匯率`}
+      />
+      <span className="flex-none text-sm text-stone-400">{base}</span>
+      {changed ? (
+        <button
+          type="button"
+          disabled={busy || parseRate(value) === null}
+          onClick={() => {
+            const parsed = parseRate(value)
+            if (parsed !== null) void run(() => onSave(parsed))
+          }}
+          className="min-h-11 flex-none rounded-xl bg-teal-600 px-3 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          存
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            if (window.confirm(`確定要移除 ${currency} 的匯率?已記的帳不受影響`)) {
+              void run(onDelete)
+            }
+          }}
+          className="min-h-11 flex-none rounded-xl px-3 text-sm font-semibold text-stone-400 active:text-red-500"
+          aria-label={`刪除 ${currency} 匯率`}
+        >
+          ✕
+        </button>
+      )}
+    </li>
   )
 }
