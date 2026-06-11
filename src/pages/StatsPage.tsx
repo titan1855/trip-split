@@ -106,7 +106,10 @@ export default function StatsPage() {
       <section className="mt-6">
         <h2 className={sectionTitle}>每人分攤多少</h2>
         <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-stone-900">
-          <div style={{ height: Math.max(barData.length * 44, 88) }}>
+          <div
+            className="text-stone-700 dark:text-stone-100"
+            style={{ height: Math.max(barData.length * 44, 88) }}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} layout="vertical" margin={{ left: 8, right: 48 }}>
                 <XAxis type="number" hide />

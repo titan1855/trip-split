@@ -228,17 +228,19 @@ export default function ExpenseFormPage() {
             金額
           </label>
           <div className="flex gap-2">
-            <input
-              id="exp-amount"
-              className={`${inputCls} text-lg tabular-nums`}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0"
-              inputMode="decimal"
-              required
-            />
+            <div className="min-w-0 flex-1">
+              <input
+                id="exp-amount"
+                className={`${inputCls} text-lg tabular-nums`}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+                inputMode="decimal"
+                required
+              />
+            </div>
             <select
-              className={`${inputCls} w-28 flex-none`}
+              className={`${inputCls} !w-24 flex-none`}
               value={currency}
               onChange={(e) => {
                 const c = e.target.value
@@ -417,7 +419,7 @@ export default function ExpenseFormPage() {
           <input
             id="exp-date"
             type="date"
-            className={inputCls}
+            className={`${inputCls} block appearance-none`}
             value={spentAt}
             onChange={(e) => setSpentAt(e.target.value)}
             required
