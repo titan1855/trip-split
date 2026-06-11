@@ -37,7 +37,7 @@ export default function ExpensesPage() {
   }
 
   return (
-    <main className="px-4 pt-4">
+    <main className="px-4 pb-24 pt-4">
       {expenses.length === 0 && (
         <div className="mt-24 text-center text-teal-700 dark:text-teal-300">
           <p className="text-4xl">🧾</p>
@@ -85,7 +85,7 @@ export default function ExpensesPage() {
 
       <Link
         to="new"
-        className="fixed bottom-20 left-1/2 z-10 flex min-h-13 -translate-x-1/2 items-center rounded-full bg-teal-600 px-8 py-3 text-lg font-bold text-white shadow-lg active:bg-teal-700"
+        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-10 flex min-h-13 -translate-x-1/2 items-center rounded-full bg-teal-600 px-8 py-3 text-lg font-bold text-white shadow-lg active:bg-teal-700"
       >
         ✏️ 記一筆
       </Link>

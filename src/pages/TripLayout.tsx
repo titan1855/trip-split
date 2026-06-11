@@ -77,7 +77,7 @@ export default function TripLayout() {
         <h1 className="truncate text-lg font-semibold">{trip.name}</h1>
       </header>
 
-      <div className="flex-1 pb-20">
+      <div className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))]">
         <Outlet context={context} />
       </div>
 
