@@ -67,7 +67,9 @@ export default function ExpensesPage() {
                         {expense.title}
                       </span>
                       <span className="block text-xs text-stone-500">
-                        {payersLabel(expense)} 付的 · {expense.expense_splits.length} 人分
+                        {expense.kind === 'settlement'
+                          ? '還款記錄'
+                          : `${payersLabel(expense)} 付的 · ${expense.expense_splits.length} 人分`}
                       </span>
                     </span>
                     <span className="font-semibold tabular-nums text-stone-900">

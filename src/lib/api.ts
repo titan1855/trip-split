@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { generateInviteCode } from './inviteCode'
+import { todayStr } from './date'
 import type { Expense, ExpensePayer, ExpenseSplit, Member, Trip } from './database.types'
 
 export type ExpenseDetail = Expense & {
@@ -193,6 +194,32 @@ export async function updateExpense(
     .from('expense_splits')
     .insert(splits.map((s) => ({ ...s, expense_id: expenseId })))
   if (splitError) fail('更新分攤明細失敗,請再試一次', splitError)
+}
+
+/** 標記已還款:存成一筆 settlement 交易(付款人=還錢的人,分攤=收錢的人),一律以主幣別記 */
+export async function createSettlement(args: {
+  tripId: string
+  currency: string
+  fromId: string
+  toId: string
+  amountCents: number
+  title: string
+}): Promise<void> {
+  await createExpense(
+    {
+      trip_id: args.tripId,
+      kind: 'settlement',
+      title: args.title,
+      amount_cents: args.amountCents,
+      currency: args.currency,
+      fx_rate: 1,
+      category: '其他',
+      spent_at: todayStr(),
+      note: null,
+    },
+    [{ member_id: args.fromId, paid_cents: args.amountCents }],
+    [{ member_id: args.toId, share_cents: args.amountCents }],
+  )
 }
 
 export async function deleteExpense(expenseId: string): Promise<void> {
