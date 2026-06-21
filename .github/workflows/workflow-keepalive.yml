@@ -1,0 +1,40 @@
+name: Keep workflows enabled
+
+# GitHub 規則:repo 連續 60 天「沒有活動」,排程(schedule)的 workflow 會被自動停用,
+# 之後要到 Actions 頁面手動按一次「Enable workflow」才會恢復。一旦被停用,連上面的
+# Supabase keep-alive 排程也會跟著停,Supabase 過幾天就睡著了。
+#
+# 重點:用內建的 GITHUB_TOKEN 推的 commit 會被歸給 github-actions[bot],GitHub 不把它
+# 算成「活動」,無法重置 60 天計時器。所以這支排程改用一顆「真人帳號的 PAT」(存在
+# secret KEEPALIVE_PAT)來推 commit,commit 被歸給本人,才算數。
+#
+# 每月 1 號與 15 號各跑一次,最長間隔約 16 天,離 60 天門檻有充足餘裕,就算 GitHub 偶爾
+# 延後或略過一次排程也不會踩線。
+
+on:
+  schedule:
+    - cron: '23 7 1,15 * *' # 每月 1、15 號 07:23 UTC(台灣 15:23),避開整點降低被延後機率
+  workflow_dispatch: # 也可在 Actions 頁面手動觸發測試
+
+# 預設 GITHUB_TOKEN 不需要寫入權限,推送一律走 KEEPALIVE_PAT
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout(用 PAT,讓後續 push 歸給真人帳號)
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.KEEPALIVE_PAT }}
+
+      - name: 更新時間戳並推送
+        run: |
+          ts="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "$ts" > .github/keepalive-timestamp.txt
+          git config user.name  "titan1855"
+          git config user.email "titan.chang@nldepa.org.tw"
+          git add .github/keepalive-timestamp.txt
+          git commit -m "chore: keep-alive 戳記 ${ts}(維持排程啟用,勿手動處理)"
+          git push
