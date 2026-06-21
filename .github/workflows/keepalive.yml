@@ -1,0 +1,31 @@
+name: Keep Supabase awake
+
+# 免費方案的 Supabase 專案閒置約 7 天會自動暫停(連 DNS 都停止解析)。
+# 這支排程每 2 天打一次 REST 查詢,模擬一次活動把閒置計時器歸零,讓專案不睡著。
+# 2 天的間隔對 7 天門檻留有餘裕:就算 GitHub 偶爾延後或略過一次排程,也不會踩到暫停。
+
+on:
+  schedule:
+    # 每 2 天的 06:17 UTC(台灣 14:17)。避開整點以降低被 GitHub 延後的機率。
+    - cron: '17 6 */2 * *'
+  workflow_dispatch: # 也可在 Actions 頁面手動觸發測試
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      # anon/publishable key 屬可公開金鑰,與 deploy.yml 一致採用內嵌寫法(見 SPEC.md 第 5 節)
+      SUPABASE_URL: https://ugdadpjvhajmkfblaxsd.supabase.co
+      SUPABASE_ANON_KEY: sb_publishable_n9jLtdTmvJW0nWiHABV3yA_6_WQSaAM
+    steps:
+      - name: Ping Supabase REST
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            "${SUPABASE_URL}/rest/v1/trips?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}")
+          echo "Supabase REST 回應 HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::保活失敗,Supabase 沒有回 200(可能已暫停或服務異常)"
+            exit 1
+          fi
+          echo "保活成功,專案處於喚醒狀態"
